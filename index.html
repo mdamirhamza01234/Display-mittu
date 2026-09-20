@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer QR Display</title>
+
+    <!-- QR Code Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            height: 100%; margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(160deg,#1B2A4A,#5B6FE0 60%,#F3F4FB 60%);
+            overflow: hidden;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #qr-container {
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0px 10px 25px rgba(0,0,0,0.15);
+            display: none;
+            text-align: center;
+        }
+        #welcome-screen {
+            font-size: 26px;
+            color: #1B2A4A;
+            text-align: center;
+            font-weight: bold;
+            line-height: 1.6;
+        }
+        .amount-text {
+            font-size: 32px;
+            color: #12896B;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        .shop-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #C9971F;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        /* ---------------- THANK YOU SCREEN ---------------- */
+        #thankyou-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .ty-check-wrap {
+            width: 140px; height: 140px; border-radius: 50%;
+            background: #12896B;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 0 0 rgba(18,137,107,0.5);
+            animation: ty-pulse 1.4s ease-out infinite, ty-pop 0.5s ease-out;
+        }
+        .ty-check-wrap svg { width: 70px; height: 70px; }
+        .ty-check-path {
+            stroke: #fff; stroke-width: 6; fill: none;
+            stroke-linecap: round; stroke-linejoin: round;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: ty-draw 0.5s 0.35s ease-out forwards;
+        }
+        @keyframes ty-pop {
+            0% { transform: scale(0); }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        @keyframes ty-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(18,137,107,0.5); }
+            70% { box-shadow: 0 0 0 30px rgba(18,137,107,0); }
+            100% { box-shadow: 0 0 0 0 rgba(18,137,107,0); }
+        }
+        @keyframes ty-draw { to { stroke-dashoffset: 0; } }
+
+        .ty-title {
+            margin-top: 26px; font-size: 38px; font-weight: 900; color: #1B2A4A;
+            animation: ty-rise 0.5s 0.2s ease-out both;
+        }
+        .ty-sub {
+            margin-top: 10px; font-size: 18px; color: #5B6FE0; font-weight: 600;
+            animation: ty-rise 0.5s 0.35s ease-out both;
+        }
+        @keyframes ty-rise {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* confetti */
+        .confetti {
+            position: fixed; top: -10px; border-radius: 2px;
+            animation-name: ty-fall; animation-timing-function: linear; animation-iteration-count: 1;
+        }
+        @keyframes ty-fall {
+            to { transform: translateY(110vh) rotate(360deg); opacity: 0.9; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Jab koi bill nahi bana hoga tab yeh welcome screen dikhegi -->
+    <div id="welcome-screen">
+        🛒 HAMZA HOLLSALLER <br>
+        <span style="font-size:18px; color:#7f8c8d; font-weight:normal;">Welcome! Please wait, creating your bill...</span>
+    </div>
+
+    <!-- Jab Main phone se bill generate hoga tab yeh box automatic open ho jayega -->
+    <div id="qr-container">
+        <div class="shop-name">HAMZA HOLLSALLER</div>
+        <div id="qrcode" style="display: flex; justify-content: center;"></div>
+        <div id="bill-details" class="amount-text">₹ 0.00</div>
+        <p style="color:#7f8c8d; font-size:15px; font-weight: bold; margin-top: 15px;">Scan &amp; Pay via any UPI App</p>
+    </div>
+
+    <!-- Payment ho jaane ke baad yeh Thank You animation dikhegi -->
+    <div id="thankyou-screen">
+        <div class="ty-check-wrap">
+            <svg viewBox="0 0 52 52">
+                <path class="ty-check-path" d="M14 27 L22 35 L38 17" />
+            </svg>
+        </div>
+        <div class="ty-title">Thank You!</div>
+        <div class="ty-sub">Payment Received Successfully 🙏</div>
+    </div>
+
+    <!-- Firebase SDK aur Live Integration -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+        // Aapka original Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQ-fm6-_bs728n6rcUS-XS9Zl-hqbIQhA",
+            authDomain: "mittu-billing.firebaseapp.com",
+            databaseURL: "https://mittu-billing-default-rtdb.firebaseio.com",
+            projectId: "mittu-billing",
+            storageBucket: "mittu-billing.firebasestorage.app",
+            messagingSenderId: "9778174452",
+            appId: "1:9778174452:web:99b40c599546a5560541a1"
+        };
+
+        // Firebase Initialize karein
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        const qrContainer = document.getElementById('qr-container');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const thankyouScreen = document.getElementById('thankyou-screen');
+        const billDetails = document.getElementById('bill-details');
+        const qrcodeDiv = document.getElementById('qrcode');
+
+        let currentActiveBill = null;
+        let lastStatus = null;
+
+        function showScreen(name){
+            welcomeScreen.style.display = (name === 'welcome') ? 'block' : 'none';
+            qrContainer.style.display = (name === 'qr') ? 'block' : 'none';
+            thankyouScreen.style.display = (name === 'thankyou') ? 'flex' : 'none';
+        }
+
+        // Simple falling-confetti burst for the Thank You screen
+        function launchConfetti(){
+            const colors = ['#1B2A4A','#5B6FE0','#C9971F','#12896B','#FF6B6B'];
+            for (let i = 0; i < 60; i++){
+                const piece = document.createElement('div');
+                piece.className = 'confetti';
+                const size = 6 + Math.random() * 6;
+                piece.style.width = size + 'px';
+                piece.style.height = (size * 0.4) + 'px';
+                piece.style.left = Math.random() * 100 + 'vw';
+                piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+                const duration = 2.2 + Math.random() * 1.6;
+                piece.style.animationDuration = duration + 's';
+                piece.style.animationDelay = (Math.random() * 0.4) + 's';
+                document.body.appendChild(piece);
+                setTimeout(() => piece.remove(), (duration + 0.5) * 1000);
+            }
+        }
+
+        // Speaks "Thank you" out loud on the old phone's speaker
+        function speakThankYou(){
+            try {
+                if (!('speechSynthesis' in window)) return;
+                window.speechSynthesis.cancel();
+                const utter = new SpeechSynthesisUtterance('Thank you for your payment. Visit again!');
+                utter.rate = 0.95;
+                utter.pitch = 1.05;
+                window.speechSynthesis.speak(utter);
+            } catch (e) {
+                console.warn('Voice playback not available:', e);
+            }
+        }
+
+        // Firebase Cloud Database Listener
+        const dbRef = ref(database, 'currentBill/');
+        onValue(dbRef, (snapshot) => {
+            const data = snapshot.val();
+
+            if (data && data.status === 'paid') {
+                // Payment confirmed on the billing phone — play Thank You once
+                if (lastStatus !== 'paid') {
+                    lastStatus = 'paid';
+                    currentActiveBill = null;
+                    showScreen('thankyou');
+                    launchConfetti();
+                    speakThankYou();
+                }
+            } else if (data) {
+                // New / pending QR — show it
+                lastStatus = data.status || 'pending';
+                if (currentActiveBill !== data.billNo) {
+                    currentActiveBill = data.billNo;
+                    qrcodeDiv.innerHTML = ""; // Purana QR clear karein
+                    new QRCode(qrcodeDiv, { text: data.upiUrl, width: 260, height: 260 });
+                }
+                billDetails.innerText = "Total Amount: ₹ " + data.amount;
+                showScreen('qr');
+            } else {
+                // Main billing phone se data clear/shutdown hua — welcome wapas
+                currentActiveBill = null;
+                lastStatus = null;
+                showScreen('welcome');
+            }
+        });
+    </script>
+</body>
+</html>
