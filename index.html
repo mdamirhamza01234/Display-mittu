@@ -331,6 +331,32 @@
         let billData = null;
         let custData = null;
 
+        // ---------------- "NEW" REQUEST WATCHDOG ----------------
+        // If the shopkeeper's phone doesn't pick up the request (app closed,
+        // alert missed, no internet, etc.), status stays 'new' forever and
+        // this screen used to spin endlessly. This timer force-flips it to
+        // the error screen after 90s so the customer isn't stuck waiting.
+        let newReqTimeoutId = null;
+        let newReqTimeoutTs = null;
+        function clearNewReqTimeout(){
+            if (newReqTimeoutId) { clearTimeout(newReqTimeoutId); newReqTimeoutId = null; }
+            newReqTimeoutTs = null;
+        }
+        function armNewReqTimeout(ts){
+            if (newReqTimeoutTs === ts) return; // already armed for this request
+            clearNewReqTimeout();
+            newReqTimeoutTs = ts;
+            newReqTimeoutId = setTimeout(() => {
+                if (custData && custData.status === 'new' && custData.ts === ts) {
+                    update(customerReqDbRef, {
+                        status: 'error',
+                        errorMessage: 'Dukaandar tak samay par nahi pahuncha. Dobara try karein.',
+                        ts: Date.now()
+                    }).catch(err => console.warn('Watchdog error push failed:', err));
+                }
+            }, 90000); // 90 seconds
+        }
+
         function hideAllScreens(){
             welcomeScreen.style.display = 'none';
             qrContainer.style.display = 'none';
@@ -450,6 +476,14 @@
             // 6) Customer just sent their order, shopkeeper hasn't reviewed yet.
             if (custData && custData.status === 'new') {
                 showWaiting('Aapka order dukaandar ke paas bhej diya gaya hai...', 'Thodi der intezaar karein 🙏');
+                armNewReqTimeout(custData.ts);
+                return;
+            }
+            clearNewReqTimeout();
+            // 6.5) AI extraction failed on the shopkeeper's phone — don't leave
+            // the customer staring at "Thodi der intezaar karein" forever.
+            if (custData && custData.status === 'error') {
+                showWaiting('⚠️ Order process nahi ho paya', 'Dukaandar se dobara poochein ya thodi der baad try karein 🙏');
                 return;
             }
             // 7) Nothing going on — welcome screen with the "AI se Bill" button.
@@ -466,10 +500,18 @@
         onValue(customerReqDbRef, (snapshot) => {
             const data = snapshot.val();
             const wasCompleted = custData && custData.status === 'completed';
+            const wasError = custData && custData.status === 'error';
             custData = data;
             renderDisplay();
             if (custData && custData.status === 'completed' && !wasCompleted) {
                 // Auto-reset back to welcome a few seconds after Thank You.
+                setTimeout(() => {
+                    remove(customerReqDbRef).catch(e => console.warn('Clear customerRequest failed:', e));
+                }, 6000);
+            }
+            if (custData && custData.status === 'error' && !wasError) {
+                // Auto-reset back to welcome a few seconds after showing the error,
+                // so the Display doesn't get stuck — customer can just try again.
                 setTimeout(() => {
                     remove(customerReqDbRef).catch(e => console.warn('Clear customerRequest failed:', e));
                 }, 6000);
@@ -517,7 +559,83 @@
             reader.readAsDataURL(file);
         };
 
-        window.sendCustomerAiRequest = function(){
+        // ---------------- AI SCAN (runs right here on the Display) ----------------
+        // Same Gemini proxy the main Mittu app uses — works because this page
+        // is hosted on the same Vercel project, so /api/gemini resolves to
+        // the same serverless function (API key never touches this screen).
+        // Only items/qty/unit are extracted here — NOT rate — because this
+        // screen has no access to the shop's live Stock Record. Rate gets
+        // filled on the Mittu phone from its own Stock Record, same as the
+        // normal "AI se Bill Generate karein" flow.
+        const CUST_GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'];
+
+        function custAiSystemPrompt(){
+            return 'Tum ek dukaan ke customer se aaya hua order padhne wale data-extraction AI ho. ' +
+                'Customer ne Hindi/Hinglish/English mein apna naam, mobile, address aur kya lena hai likha hai, ya order ki photo di hai. ' +
+                'SIRF valid JSON object return karo, koi markdown ya ``` nahi:\n' +
+                '{"customerName":string|null,"mobile":string|null,"address":string|null,"items":[{"name":string,"qty":number|null,"unit":string|null}]}\n' +
+                'Rules:\n' +
+                '1. Customer name, 10-digit mobile aur address ko alag fields mein nikalo (jo na mile use null rakho).\n' +
+                '2. Items mein sirf jo cheezein customer lena chahta hai wahi nikalo.\n' +
+                '3. Qty aur unit ko alag karo. "5kg aalu" => qty 5, unit "kg", name "aalu".\n' +
+                '4. name Roman letters (Hinglish) mein likho, jaise आलू -> Aalu.\n' +
+                '5. Rate/price kabhi mat nikalo, wo yahan available nahi hai — hamesha ignore karo.\n' +
+                '6. Agar qty saaf na ho to null rakho, andaza mat lagao.';
+        }
+
+        async function scanCustomerOrderWithAi(text, file){
+            const parts = [];
+            if (text) parts.push({ text: 'Customer ka order:\n' + text });
+            if (file) {
+                parts.push({ inline_data: { mime_type: file.mimeType, data: file.data } });
+                parts.push({ text: 'Upar di gayi photo customer ke order ki hai, ise padhkar items nikalo.' });
+            }
+            const body = JSON.stringify({
+                systemInstruction: { parts: [{ text: custAiSystemPrompt() }] },
+                contents: [{ role: 'user', parts }],
+                generationConfig: { temperature: 0, maxOutputTokens: 2048, responseMimeType: 'application/json' }
+            });
+
+            let lastErr = '';
+            for (const model of CUST_GEMINI_MODELS) {
+                let resp;
+                try {
+                    resp = await fetch('/api/gemini?model=' + encodeURIComponent(model), {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body
+                    });
+                } catch (e) { lastErr = 'Internet / network problem'; continue; }
+                if (resp.ok) {
+                    const j = await resp.json();
+                    const cand = j.candidates && j.candidates[0];
+                    const txt = (cand && cand.content && cand.content.parts) ? cand.content.parts.map(p => p.text || '').join('') : '';
+                    if (!txt) throw new Error('AI ne order se data nahi nikala.');
+                    const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
+                    if (a < 0 || b < a) throw new Error('AI ka jawab samajh nahi aaya.');
+                    let raw;
+                    try { raw = JSON.parse(txt.slice(a, b + 1)); } catch (e) { throw new Error('AI ka jawab samajh nahi aaya.'); }
+                    const items = (Array.isArray(raw.items) ? raw.items : []).map(o => ({
+                        name: String((o && o.name) || '').trim(),
+                        qty: (o && o.qty != null && isFinite(Number(o.qty)) && Number(o.qty) > 0) ? Number(o.qty) : null,
+                        unit: String((o && o.unit) || '').trim()
+                    })).filter(it => it.name || it.qty);
+                    return {
+                        customerName: String((raw && raw.customerName) || '').trim(),
+                        mobile: String((raw && raw.mobile) || '').replace(/\D/g, '').slice(-10),
+                        address: String((raw && raw.address) || '').trim(),
+                        items
+                    };
+                }
+                let msg = '';
+                try { const ej = await resp.json(); msg = (ej.error && ej.error.message) || ''; } catch (e) {}
+                lastErr = 'AI error ' + resp.status + (msg ? ' — ' + msg.slice(0, 140) : '');
+                if (resp.status === 401 || resp.status === 403 || /api key/i.test(msg)) break;
+            }
+            throw new Error(lastErr || 'AI se jawab nahi mila.');
+        }
+
+        window.sendCustomerAiRequest = async function(){
             const text = (document.getElementById('custAiInput').value || '').trim();
             const statusEl = document.getElementById('custAiStatus');
             const sendBtn = document.getElementById('custAiSendBtn');
@@ -528,12 +646,34 @@
             }
             sendBtn.disabled = true;
             statusEl.style.color = '#555';
+            statusEl.textContent = '🔎 AI Data scan kar raha hai, please wait...';
+
+            let scanned;
+            try {
+                scanned = await scanCustomerOrderWithAi(text, custAiFile);
+            } catch (err) {
+                console.error('Customer order AI scan failed:', err);
+                sendBtn.disabled = false;
+                statusEl.style.color = '#b3261e';
+                statusEl.textContent = '❌ Scan nahi ho paya: ' + ((err && err.message) || err) + ' — dobara try karein.';
+                return;
+            }
+            if (!scanned.items.length) {
+                sendBtn.disabled = false;
+                statusEl.style.color = '#b3261e';
+                statusEl.textContent = 'AI ko koi item samajh nahi aaya. Order thoda saaf likh kar dobara try karein.';
+                return;
+            }
+
+            statusEl.style.color = '#555';
             statusEl.textContent = 'Dukaandar ko bheja ja raha hai...';
 
             const payload = {
                 status: 'new',
-                requestText: text,
-                files: custAiFile ? [custAiFile] : [],
+                customerName: scanned.customerName,
+                customerMobile: scanned.mobile,
+                customerAddress: scanned.address,
+                items: scanned.items,
                 ts: Date.now()
             };
 
