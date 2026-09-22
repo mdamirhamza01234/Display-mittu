@@ -567,12 +567,36 @@
             remove(customerReqDbRef).catch(e => console.warn('Clear customerRequest failed:', e));
         };
 
+        // ---------------- LISTENER CONNECTION STATUS ----------------
+        // Agar Firebase listener hi attach na ho paaye (permission denied,
+        // anonymous sign-in slow/blocked, naye phone par pehli baar load,
+        // etc.) to pehle koi error UI nahi thi — screen chupchaap "welcome"
+        // par ruki rehti thi aur Dukaandar ka Bill Review card kabhi nahi
+        // aata tha, bina kisi wajah ke. Ab error track hota hai aur ek chhota
+        // banner dikhta hai taaki pata chale connection hi nahi bana.
+        const connErrorBanner = document.createElement('div');
+        connErrorBanner.id = 'connErrorBanner';
+        connErrorBanner.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;z-index:999999;background:#c0392b;color:#fff;font-size:13px;font-weight:700;text-align:center;padding:8px 10px;';
+        connErrorBanner.textContent = '⚠️ Connection error — Display data load nahi ho paya. Page ko refresh karein.';
+        document.body.appendChild(connErrorBanner);
+
+        function showConnError(source, error){
+            console.error('Firebase ' + source + ' listener failed:', error);
+            window.__displayListenerError = { source, error };
+            connErrorBanner.style.display = 'block';
+        }
+        function clearConnError(){
+            if (connErrorBanner.style.display !== 'none') connErrorBanner.style.display = 'none';
+        }
+
         // Firebase Cloud Database Listeners
         onValue(billDbRef, (snapshot) => {
+            clearConnError();
             billData = snapshot.val();
             renderDisplay();
-        });
+        }, (error) => showConnError('currentBill', error));
         onValue(customerReqDbRef, (snapshot) => {
+            clearConnError();
             const data = snapshot.val();
             const wasCompleted = custData && custData.status === 'completed';
             const wasError = custData && custData.status === 'error';
@@ -591,7 +615,7 @@
                     remove(customerReqDbRef).catch(e => console.warn('Clear customerRequest failed:', e));
                 }, 6000);
             }
-        });
+        }, (error) => showConnError('customerRequest', error));
 
         // ---------------- CUSTOMER "AI SE BILL" MODAL ----------------
         let custAiFile = null; // {mimeType, data (base64, no prefix)}
