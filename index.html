@@ -283,6 +283,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
         // Aapka original Firebase Config
         const firebaseConfig = {
@@ -298,6 +299,21 @@
         // Firebase Initialize karein
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
+
+        // Display screen par koi login UI nahi hai — isliye chupchaap
+        // "Anonymous" sign-in karte hain taaki Firebase rules (auth != null)
+        // customer ki AI-bill request aur Cash/Online payment selection ko
+        // likhne dein. IMPORTANT: Firebase Console me Authentication > 
+        // Sign-in method me "Anonymous" provider ON hona zaroori hai, warna
+        // yeh bhi PERMISSION_DENIED dega — neeche writeReady flag isi liye hai.
+        const dbAuth = getAuth(app);
+        let writeReady = false;
+        onAuthStateChanged(dbAuth, (user) => {
+            writeReady = !!user;
+        });
+        signInAnonymously(dbAuth).catch(err => {
+            console.error('Anonymous sign-in failed (enable it in Firebase Console > Authentication):', err);
+        });
         const billDbRef = ref(database, 'currentBill/');
         const customerReqDbRef = ref(database, 'customerRequest/');
 
@@ -528,7 +544,13 @@
                 console.error('Send customer request failed:', err);
                 sendBtn.disabled = false;
                 statusEl.style.color = '#b3261e';
-                statusEl.textContent = 'Bhejte samay error aayi: ' + (err && err.message ? err.message : err);
+                if (err && err.code === 'PERMISSION_DENIED') {
+                    statusEl.textContent = writeReady
+                        ? 'Firebase rules is screen ko likhne nahi de rahe. Database rules mein "customerRequest" path par write allow karein.'
+                        : 'Is screen ka Firebase sign-in complete nahi hua (Anonymous provider). Firebase Console > Authentication > Sign-in method mein "Anonymous" ON karein, phir screen refresh karein.';
+                } else {
+                    statusEl.textContent = 'Bhejte samay error aayi: ' + (err && err.message ? err.message : err);
+                }
             });
         };
 
@@ -543,7 +565,13 @@
                 console.error('Payment selection failed:', err);
                 document.getElementById('cashPayBtn').disabled = false;
                 document.getElementById('onlinePayBtn').disabled = false;
-                alert('Payment select karte samay error aayi, dobara try karein.');
+                if (err && err.code === 'PERMISSION_DENIED') {
+                    alert(writeReady
+                        ? 'Firebase rules is screen ko likhne nahi de rahe. Database rules mein "customerRequest" path par write allow karein.'
+                        : 'Is screen ka Firebase sign-in complete nahi hua. Firebase Console > Authentication > Sign-in method mein "Anonymous" ON karein, phir screen refresh karein.');
+                } else {
+                    alert('Payment select karte samay error aayi, dobara try karein.');
+                }
             });
         };
     </script>
