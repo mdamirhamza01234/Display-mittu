@@ -350,6 +350,16 @@
         let currentActiveBill = null;
         let billData = null;
         let custData = null;
+        let currentOnlinePayKey = null; // dedupes redrawing the online-payment QR
+
+        // Same UPI ID/formula Mittu's own phone uses (buildUpiUrl in index.html) —
+        // keeping it here too means the customer display can show the QR the
+        // instant "Online Payment" is tapped, without waiting on a round trip.
+        function buildCustUpiUrl(total, billNo){
+            const upiId = '7303714309@axl';
+            const payeeName = 'MITTU WHOLESALER & RETAILER';
+            return `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${Number(total || 0).toFixed(2)}&cu=INR&tn=${encodeURIComponent('Bill No ' + (billNo || ''))}`;
+        }
 
         // ---------------- "NEW" REQUEST WATCHDOG ----------------
         // If the shopkeeper's phone doesn't pick up the request (app closed,
@@ -481,8 +491,25 @@
                 qrContainer.style.display = 'block';
                 return;
             }
-            // 4) Customer chose Cash/Online — waiting for shopkeeper to confirm.
-            if (custData && (custData.status === 'cash_selected' || custData.status === 'online_selected')) {
+            // 4a) Customer chose Online Payment — show the UPI QR right away
+            // (same time the shopkeeper's phone gets the "Payment Select Hua"
+            // alert), instead of leaving the customer staring at a spinner.
+            if (custData && custData.status === 'online_selected') {
+                const payKey = 'online_' + (custData.ts || '');
+                if (currentOnlinePayKey !== payKey) {
+                    currentOnlinePayKey = payKey;
+                    currentActiveBill = null; // let a later normal-flow QR redraw if needed
+                    qrcodeDiv.innerHTML = "";
+                    const upiUrl = buildCustUpiUrl(custData.total, custData.billNo);
+                    new QRCode(qrcodeDiv, { text: upiUrl, width: 260, height: 260 });
+                }
+                billDetails.innerText = "Total Amount: ₹ " + Number(custData.total || 0).toFixed(2);
+                hideAllScreens();
+                qrContainer.style.display = 'block';
+                return;
+            }
+            // 4b) Customer chose Cash — just wait for shopkeeper to confirm.
+            if (custData && custData.status === 'cash_selected') {
                 showWaiting('Payment confirm ho raha hai...', 'Dukaandar ko payment confirm karne dein 🙏');
                 return;
             }
@@ -500,6 +527,16 @@
                 return;
             }
             clearNewReqTimeout();
+            // 6.2) Order dukaandar ke phone tak pahuch chuka hai (real-time acknowledgement).
+            if (custData && custData.status === 'seen') {
+                showWaiting('✅ Dukaandar tak aapka order pahuch chuka hai', 'Bill taiyar kiya ja raha hai 🙏');
+                return;
+            }
+            // 6.4) Dukaandar bill fields check/review kar raha hai.
+            if (custData && custData.status === 'reviewing') {
+                showWaiting('📝 Aapka Item Review ho raha hai', 'Dukaandar order check kar raha hai 🙏');
+                return;
+            }
             // 6.5) AI extraction failed on the shopkeeper's phone — don't leave
             // the customer staring at "Thodi der intezaar karein" forever.
             if (custData && custData.status === 'error') {
@@ -523,6 +560,7 @@
             billData = null;
             custData = null;
             currentActiveBill = null;
+            currentOnlinePayKey = null;
             hideAllScreens();
             welcomeScreen.style.display = 'block';
             remove(billDbRef).catch(e => console.warn('Clear currentBill failed:', e));
