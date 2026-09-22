@@ -13,7 +13,7 @@
         html, body {
             height: 100%; margin: 0;
             font-family: Arial, sans-serif;
-            background: linear-gradient(160deg,#1B2A4A,#5B6FE0 60%,#F3F4FB 60%);
+            background: linear-gradient(160deg,#FF9933,#FDCE94 60%,#f4f4f9 60%);
             overflow: hidden;
         }
         body {
@@ -32,14 +32,14 @@
         }
         #welcome-screen {
             font-size: 26px;
-            color: #1B2A4A;
+            color: #3A2A18;
             text-align: center;
             font-weight: bold;
             line-height: 1.6;
         }
         .amount-text {
             font-size: 32px;
-            color: #12896B;
+            color: #27ae60;
             font-weight: bold;
             margin-top: 15px;
         }
@@ -47,7 +47,7 @@
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 20px;
-            color: #C9971F;
+            color: #E07A1F;
             border-bottom: 2px solid #eee;
             padding-bottom: 10px;
         }
@@ -62,9 +62,9 @@
         }
         .ty-check-wrap {
             width: 140px; height: 140px; border-radius: 50%;
-            background: #12896B;
+            background: #27ae60;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 0 0 rgba(18,137,107,0.5);
+            box-shadow: 0 0 0 0 rgba(39,174,96,0.5);
             animation: ty-pulse 1.4s ease-out infinite, ty-pop 0.5s ease-out;
         }
         .ty-check-wrap svg { width: 70px; height: 70px; }
@@ -81,23 +81,33 @@
             100% { transform: scale(1); }
         }
         @keyframes ty-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(18,137,107,0.5); }
-            70% { box-shadow: 0 0 0 30px rgba(18,137,107,0); }
-            100% { box-shadow: 0 0 0 0 rgba(18,137,107,0); }
+            0% { box-shadow: 0 0 0 0 rgba(39,174,96,0.5); }
+            70% { box-shadow: 0 0 0 30px rgba(39,174,96,0); }
+            100% { box-shadow: 0 0 0 0 rgba(39,174,96,0); }
         }
         @keyframes ty-draw { to { stroke-dashoffset: 0; } }
 
         .ty-title {
-            margin-top: 26px; font-size: 38px; font-weight: 900; color: #1B2A4A;
+            margin-top: 26px; font-size: 38px; font-weight: 900; color: #3A2A18;
             animation: ty-rise 0.5s 0.2s ease-out both;
         }
         .ty-sub {
-            margin-top: 10px; font-size: 18px; color: #5B6FE0; font-weight: 600;
+            margin-top: 10px; font-size: 18px; color: #6b543a; font-weight: 600;
             animation: ty-rise 0.5s 0.35s ease-out both;
         }
         @keyframes ty-rise {
             from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Flash effect behind the Thank You screen */
+        @keyframes ty-flash-bg {
+            0%, 100% { background-color: rgba(255,255,255,0); }
+            50% { background-color: rgba(255,255,255,0.85); }
+        }
+        #thankyou-screen.ty-flash {
+            animation: ty-flash-bg 0.55s ease-in-out 5;
+            border-radius: 24px;
         }
 
         /* confetti */
@@ -108,19 +118,151 @@
         @keyframes ty-fall {
             to { transform: translateY(110vh) rotate(360deg); opacity: 0.9; }
         }
+
+        /* ---------------- CUSTOMER "AI SE BILL" BUTTON ---------------- */
+        #custAiBtnWrap { margin-top: 26px; text-align: center; }
+        #custAiBtn {
+            background: linear-gradient(135deg,#a04e00,#E07A1F);
+            color: #fff; border: none; border-radius: 14px;
+            padding: 16px 22px; font-size: 16px; font-weight: 800;
+            max-width: 320px; line-height: 1.4; cursor: pointer;
+            box-shadow: 0 6px 18px rgba(160,78,0,0.35);
+        }
+        #custAiBtn .spark { margin-right: 6px; }
+
+        /* ---------------- AI REQUEST MODAL ---------------- */
+        .cust-ai-overlay {
+            display: none; position: fixed; inset: 0; z-index: 50;
+            background: rgba(58,42,24,0.55);
+            align-items: center; justify-content: center; padding: 18px;
+        }
+        .cust-ai-box {
+            background: #fff; border-radius: 18px; padding: 22px;
+            width: 100%; max-width: 420px; text-align: left;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.3);
+        }
+        .cust-ai-title { font-size: 20px; font-weight: 900; color: #a04e00; margin-bottom: 12px; }
+        #custAiInput {
+            width: 100%; min-height: 110px; border-radius: 10px;
+            border: 1.5px solid #f0d8b0; padding: 10px; font-size: 15px;
+            font-family: inherit; resize: vertical;
+        }
+        .cust-ai-upload-btn {
+            margin-top: 10px; width: 100%; background: #fff3e6; color: #a04e00;
+            border: 1.5px dashed #E07A1F; border-radius: 10px; padding: 10px;
+            font-weight: 700; cursor: pointer;
+        }
+        #custAiFileName { font-size: 12px; color: #666; margin-top: 6px; min-height: 16px; }
+        #custAiStatus { font-size: 13px; margin-top: 8px; min-height: 18px; color: #555; }
+        .cust-ai-actions { display: flex; gap: 10px; margin-top: 14px; }
+        .cust-ai-actions button {
+            flex: 1; padding: 12px; border-radius: 10px; border: none;
+            font-weight: 800; font-size: 15px; cursor: pointer;
+        }
+        .cust-ai-cancel { background: #f0f0f0; color: #444; }
+        .cust-ai-send { background: #27ae60; color: #fff; }
+        .cust-ai-send:disabled { opacity: 0.6; }
+
+        /* ---------------- WAITING SCREEN ---------------- */
+        #waiting-screen { display: none; text-align: center; }
+        .cust-spinner {
+            width: 60px; height: 60px; margin: 0 auto;
+            border: 6px solid #f0d8b0; border-top-color: #E07A1F;
+            border-radius: 50%; animation: cust-spin 0.9s linear infinite;
+        }
+        @keyframes cust-spin { to { transform: rotate(360deg); } }
+        #waiting-title { font-size: 21px; font-weight: 800; color: #3A2A18; margin-top: 18px; }
+        #waiting-sub { font-size: 14px; color: #7f8c8d; margin-top: 6px; }
+
+        /* ---------------- REVIEW CARD ---------------- */
+        #review-screen { display: none; }
+        .review-card {
+            background: #fff; border-radius: 18px; padding: 22px 24px;
+            width: 92vw; max-width: 420px; box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+            text-align: center;
+        }
+        .review-note { font-size: 13px; color: #7f8c8d; margin-bottom: 12px; }
+        #reviewItemsTable { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+        #reviewItemsTable th { border-bottom: 2px solid #eee; padding: 6px 4px; color: #a04e00; font-size: 12px; }
+        #reviewItemsTable td { border-bottom: 1px solid #f3f3f3; padding: 6px 4px; }
+        #reviewItemsTable td.num, #reviewItemsTable th.num { text-align: right; }
+        #reviewTotalRow {
+            display: flex; justify-content: space-between; align-items: baseline;
+            margin: 16px 0; font-size: 15px; font-weight: 700; color: #3A2A18;
+        }
+        #reviewTotalRow span.amt { font-size: 26px; color: #27ae60; font-weight: 900; }
+        .pay-actions { display: flex; gap: 12px; margin-top: 6px; }
+        .pay-btn {
+            flex: 1; padding: 15px 8px; border-radius: 12px; border: none;
+            font-weight: 800; font-size: 15px; color: #fff; cursor: pointer;
+        }
+        .cash-btn { background: #1b7a3e; }
+        .online-btn { background: #0d47a1; }
+        .pay-btn:disabled { opacity: 0.6; }
     </style>
 </head>
 <body>
 
     <!-- Jab koi bill nahi bana hoga tab yeh welcome screen dikhegi -->
     <div id="welcome-screen">
-        🛒 HAMZA HOLLSALLER <br>
+        🛒 MITTU HOLLSALLER <br>
         <span style="font-size:18px; color:#7f8c8d; font-weight:normal;">Welcome! Please wait, creating your bill...</span>
+
+        <div id="custAiBtnWrap">
+            <button id="custAiBtn" onclick="openCustomerAiModal()">
+                <span class="spark">🧾✦</span>Dear Customer, aap khud AI se apna Bill generate kar sakte hain
+            </button>
+        </div>
+    </div>
+
+    <!-- Customer khud apna order type/photo se bhejta hai -->
+    <div class="cust-ai-overlay" id="custAiOverlay" onclick="if(event.target===this) closeCustomerAiModal()">
+        <div class="cust-ai-box">
+            <div class="cust-ai-title">🤖 AI se Apna Bill Banayein</div>
+            <textarea id="custAiInput" placeholder="Apna naam, mobile number, address aur kya-kya lena hai likhein... (jaise: Ram Kumar, 9876543210, 2kg chawal, 1 litre tel)"></textarea>
+            <input type="file" id="custAiFileInput" accept="image/*" hidden onchange="custAiFileSelected(event)">
+            <button type="button" class="cust-ai-upload-btn" onclick="document.getElementById('custAiFileInput').click()">📷 Order ki Photo Upload Karein (optional)</button>
+            <div id="custAiFileName"></div>
+            <div id="custAiStatus"></div>
+            <div class="cust-ai-actions">
+                <button type="button" class="cust-ai-cancel" onclick="closeCustomerAiModal()">Cancel</button>
+                <button type="button" id="custAiSendBtn" class="cust-ai-send" onclick="sendCustomerAiRequest()">✦ Bill Bhejein</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shopkeeper review kar raha hai -->
+    <div id="waiting-screen">
+        <div class="cust-spinner"></div>
+        <div id="waiting-title">Aapka order dukaandar ke paas bhej diya gaya hai...</div>
+        <div id="waiting-sub">Thodi der intezaar karein 🙏</div>
+    </div>
+
+    <!-- Shopkeeper ne bill review ke liye bheja: customer sirf review kar sakta hai -->
+    <div id="review-screen">
+        <div class="review-card">
+            <div class="shop-name">MITTU HOLLSALLER</div>
+            <div class="review-note">Apna bill check karein (sirf review ke liye)</div>
+            <table id="reviewItemsTable">
+                <thead>
+                    <tr><th>Item</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amt</th></tr>
+                </thead>
+                <tbody id="reviewItemsBody"></tbody>
+            </table>
+            <div id="reviewTotalRow">
+                <span>Total Amount</span>
+                <span class="amt">₹<span id="reviewTotal">0.00</span></span>
+            </div>
+            <div class="pay-actions">
+                <button type="button" class="pay-btn cash-btn" id="cashPayBtn" onclick="selectPaymentMethod('cash')">💵 Cash Payment</button>
+                <button type="button" class="pay-btn online-btn" id="onlinePayBtn" onclick="selectPaymentMethod('online')">📱 Online Payment</button>
+            </div>
+        </div>
     </div>
 
     <!-- Jab Main phone se bill generate hoga tab yeh box automatic open ho jayega -->
     <div id="qr-container">
-        <div class="shop-name">HAMZA HOLLSALLER</div>
+        <div class="shop-name">MITTU HOLLSALLER</div>
         <div id="qrcode" style="display: flex; justify-content: center;"></div>
         <div id="bill-details" class="amount-text">₹ 0.00</div>
         <p style="color:#7f8c8d; font-size:15px; font-weight: bold; margin-top: 15px;">Scan &amp; Pay via any UPI App</p>
@@ -133,14 +275,14 @@
                 <path class="ty-check-path" d="M14 27 L22 35 L38 17" />
             </svg>
         </div>
-        <div class="ty-title">Thank You!</div>
-        <div class="ty-sub">Payment Received Successfully 🙏</div>
+        <div class="ty-title" id="thankyouTitle">Thank You!</div>
+        <div class="ty-sub" id="thankyouSub">Payment Received Successfully 🙏</div>
     </div>
 
     <!-- Firebase SDK aur Live Integration -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+        import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
         // Aapka original Firebase Config
         const firebaseConfig = {
@@ -156,25 +298,54 @@
         // Firebase Initialize karein
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
+        const billDbRef = ref(database, 'currentBill/');
+        const customerReqDbRef = ref(database, 'customerRequest/');
 
         const qrContainer = document.getElementById('qr-container');
         const welcomeScreen = document.getElementById('welcome-screen');
         const thankyouScreen = document.getElementById('thankyou-screen');
+        const waitingScreen = document.getElementById('waiting-screen');
+        const reviewScreen = document.getElementById('review-screen');
         const billDetails = document.getElementById('bill-details');
         const qrcodeDiv = document.getElementById('qrcode');
+        const waitingTitle = document.getElementById('waiting-title');
+        const waitingSub = document.getElementById('waiting-sub');
 
         let currentActiveBill = null;
-        let lastStatus = null;
+        let billData = null;
+        let custData = null;
 
-        function showScreen(name){
-            welcomeScreen.style.display = (name === 'welcome') ? 'block' : 'none';
-            qrContainer.style.display = (name === 'qr') ? 'block' : 'none';
-            thankyouScreen.style.display = (name === 'thankyou') ? 'flex' : 'none';
+        function hideAllScreens(){
+            welcomeScreen.style.display = 'none';
+            qrContainer.style.display = 'none';
+            thankyouScreen.style.display = 'none';
+            waitingScreen.style.display = 'none';
+            reviewScreen.style.display = 'none';
+        }
+
+        function showWaiting(title, sub){
+            hideAllScreens();
+            waitingTitle.textContent = title;
+            waitingSub.textContent = sub;
+            waitingScreen.style.display = 'block';
+        }
+
+        function showThankYou(name){
+            hideAllScreens();
+            document.getElementById('thankyouTitle').textContent = 'Thank You' + (name ? ', ' + name : '') + '!';
+            document.getElementById('thankyouSub').textContent = 'Payment Received Successfully 🙏';
+            thankyouScreen.style.display = 'flex';
+            thankyouScreen.classList.remove('ty-flash');
+            // restart the flash animation
+            void thankyouScreen.offsetWidth;
+            thankyouScreen.classList.add('ty-flash');
+            launchConfetti();
+            speakThankYou(name);
         }
 
         // Simple falling-confetti burst for the Thank You screen
         function launchConfetti(){
-            const colors = ['#1B2A4A','#5B6FE0','#C9971F','#12896B','#FF6B6B'];
+            const colors = ['#FF9933','#27ae60','#E07A1F','#ffd54f','#3A2A18'];
             for (let i = 0; i < 60; i++){
                 const piece = document.createElement('div');
                 piece.className = 'confetti';
@@ -192,11 +363,11 @@
         }
 
         // Speaks "Thank you" out loud on the old phone's speaker
-        function speakThankYou(){
+        function speakThankYou(name){
             try {
                 if (!('speechSynthesis' in window)) return;
                 window.speechSynthesis.cancel();
-                const utter = new SpeechSynthesisUtterance('Thank you for your payment. Visit again!');
+                const utter = new SpeechSynthesisUtterance('Thank you' + (name ? ', ' + name : '') + '. Payment received. Visit again!');
                 utter.rate = 0.95;
                 utter.pitch = 1.05;
                 window.speechSynthesis.speak(utter);
@@ -205,37 +376,176 @@
             }
         }
 
-        // Firebase Cloud Database Listener
-        const dbRef = ref(database, 'currentBill/');
-        onValue(dbRef, (snapshot) => {
-            const data = snapshot.val();
+        function renderReviewCard(data){
+            const body = document.getElementById('reviewItemsBody');
+            body.innerHTML = '';
+            (data.items || []).forEach(it => {
+                const tr = document.createElement('tr');
+                const qtyTxt = (it.qty != null ? it.qty : '') + (it.unit ? ' ' + it.unit : '');
+                tr.innerHTML = `<td>${escapeHtml(it.name || '-')}</td><td class="num">${escapeHtml(qtyTxt)}</td><td class="num">₹${Number(it.rate || 0).toFixed(2)}</td><td class="num">₹${Number(it.amt || 0).toFixed(2)}</td>`;
+                body.appendChild(tr);
+            });
+            document.getElementById('reviewTotal').textContent = Number(data.total || 0).toFixed(2);
+        }
 
-            if (data && data.status === 'paid') {
-                // Payment confirmed on the billing phone — play Thank You once
-                if (lastStatus !== 'paid') {
-                    lastStatus = 'paid';
-                    currentActiveBill = null;
-                    showScreen('thankyou');
-                    launchConfetti();
-                    speakThankYou();
+        function escapeHtml(s){
+            return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        // ---------------- MASTER SCREEN RENDERER ----------------
+        // currentBill (normal QR-payment flow) and customerRequest (new
+        // AI self-service flow) are independent, but only one screen can
+        // show at a time — this picks the right one with a sane priority.
+        function renderDisplay(){
+            // 1) A just-completed customer AI-bill payment wins (freshest, most specific).
+            if (custData && custData.status === 'completed') {
+                showThankYou(custData.custName || '');
+                return;
+            }
+            // 2) Normal QR-payment flow reaching "paid".
+            if (billData && billData.status === 'paid') {
+                showThankYou('');
+                return;
+            }
+            // 3) Normal QR payment pending — shopkeeper generated a UPI QR.
+            if (billData && billData.status === 'pending') {
+                if (currentActiveBill !== billData.billNo) {
+                    currentActiveBill = billData.billNo;
+                    qrcodeDiv.innerHTML = "";
+                    new QRCode(qrcodeDiv, { text: billData.upiUrl, width: 260, height: 260 });
                 }
-            } else if (data) {
-                // New / pending QR — show it
-                lastStatus = data.status || 'pending';
-                if (currentActiveBill !== data.billNo) {
-                    currentActiveBill = data.billNo;
-                    qrcodeDiv.innerHTML = ""; // Purana QR clear karein
-                    new QRCode(qrcodeDiv, { text: data.upiUrl, width: 260, height: 260 });
-                }
-                billDetails.innerText = "Total Amount: ₹ " + data.amount;
-                showScreen('qr');
-            } else {
-                // Main billing phone se data clear/shutdown hua — welcome wapas
-                currentActiveBill = null;
-                lastStatus = null;
-                showScreen('welcome');
+                billDetails.innerText = "Total Amount: ₹ " + billData.amount;
+                hideAllScreens();
+                qrContainer.style.display = 'block';
+                return;
+            }
+            // 4) Customer chose Cash/Online — waiting for shopkeeper to confirm.
+            if (custData && (custData.status === 'cash_selected' || custData.status === 'online_selected')) {
+                showWaiting('Payment confirm ho raha hai...', 'Dukaandar ko payment confirm karne dein 🙏');
+                return;
+            }
+            // 5) Shopkeeper sent the review-only card — customer chooses payment.
+            if (custData && custData.status === 'review') {
+                renderReviewCard(custData);
+                hideAllScreens();
+                reviewScreen.style.display = 'block';
+                return;
+            }
+            // 6) Customer just sent their order, shopkeeper hasn't reviewed yet.
+            if (custData && custData.status === 'new') {
+                showWaiting('Aapka order dukaandar ke paas bhej diya gaya hai...', 'Thodi der intezaar karein 🙏');
+                return;
+            }
+            // 7) Nothing going on — welcome screen with the "AI se Bill" button.
+            currentActiveBill = null;
+            hideAllScreens();
+            welcomeScreen.style.display = 'block';
+        }
+
+        // Firebase Cloud Database Listeners
+        onValue(billDbRef, (snapshot) => {
+            billData = snapshot.val();
+            renderDisplay();
+        });
+        onValue(customerReqDbRef, (snapshot) => {
+            const data = snapshot.val();
+            const wasCompleted = custData && custData.status === 'completed';
+            custData = data;
+            renderDisplay();
+            if (custData && custData.status === 'completed' && !wasCompleted) {
+                // Auto-reset back to welcome a few seconds after Thank You.
+                setTimeout(() => {
+                    remove(customerReqDbRef).catch(e => console.warn('Clear customerRequest failed:', e));
+                }, 6000);
             }
         });
+
+        // ---------------- CUSTOMER "AI SE BILL" MODAL ----------------
+        let custAiFile = null; // {mimeType, data (base64, no prefix)}
+
+        window.openCustomerAiModal = function(){
+            document.getElementById('custAiInput').value = '';
+            document.getElementById('custAiFileName').textContent = '';
+            document.getElementById('custAiStatus').textContent = '';
+            custAiFile = null;
+            document.getElementById('custAiOverlay').style.display = 'flex';
+        };
+        window.closeCustomerAiModal = function(){
+            document.getElementById('custAiOverlay').style.display = 'none';
+        };
+
+        // Compresses the photo before storing (Realtime Database keeps this
+        // cheap and fast rather than a full-resolution image).
+        window.custAiFileSelected = function(event){
+            const file = event.target.files && event.target.files[0];
+            const nameBox = document.getElementById('custAiFileName');
+            if(!file){ custAiFile = null; nameBox.textContent = ''; return; }
+            nameBox.textContent = '📷 ' + file.name + ' — compress ho raha hai...';
+            const img = new Image();
+            const reader = new FileReader();
+            reader.onload = () => {
+                img.onload = () => {
+                    const maxW = 900;
+                    const scale = Math.min(1, maxW / img.width);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    custAiFile = { mimeType: 'image/jpeg', data: dataUrl.split(',')[1] };
+                    nameBox.textContent = '📷 ' + file.name + ' — upload ke liye ready.';
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.sendCustomerAiRequest = function(){
+            const text = (document.getElementById('custAiInput').value || '').trim();
+            const statusEl = document.getElementById('custAiStatus');
+            const sendBtn = document.getElementById('custAiSendBtn');
+            if(!text && !custAiFile){
+                statusEl.style.color = '#b3261e';
+                statusEl.textContent = 'Pehle apna order likhein ya photo upload karein.';
+                return;
+            }
+            sendBtn.disabled = true;
+            statusEl.style.color = '#555';
+            statusEl.textContent = 'Dukaandar ko bheja ja raha hai...';
+
+            const payload = {
+                status: 'new',
+                requestText: text,
+                files: custAiFile ? [custAiFile] : [],
+                ts: Date.now()
+            };
+
+            update(customerReqDbRef, payload).then(() => {
+                sendBtn.disabled = false;
+                closeCustomerAiModal();
+            }).catch(err => {
+                console.error('Send customer request failed:', err);
+                sendBtn.disabled = false;
+                statusEl.style.color = '#b3261e';
+                statusEl.textContent = 'Bhejte samay error aayi: ' + (err && err.message ? err.message : err);
+            });
+        };
+
+        // ---------------- PAYMENT METHOD SELECTION ----------------
+        window.selectPaymentMethod = function(method){
+            document.getElementById('cashPayBtn').disabled = true;
+            document.getElementById('onlinePayBtn').disabled = true;
+            update(customerReqDbRef, {
+                status: method === 'cash' ? 'cash_selected' : 'online_selected',
+                ts: Date.now()
+            }).catch(err => {
+                console.error('Payment selection failed:', err);
+                document.getElementById('cashPayBtn').disabled = false;
+                document.getElementById('onlinePayBtn').disabled = false;
+                alert('Payment select karte samay error aayi, dobara try karein.');
+            });
+        };
     </script>
 </body>
 </html>
